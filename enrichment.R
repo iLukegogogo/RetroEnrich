@@ -1,9 +1,16 @@
-#! /usr/bin/Rscript
+#use this function to check if each package is on the local machine
+#if a package is installed, it will be loaded
+#if any are not, the missing package(s) will be installed and loaded
+# The code is borrowed from this page: http://www.vikram-baliga.com/blog/2015/7/19/a-hassle-free-way-to-verify-that-r-packages-are-installed-and-loaded
+packages = c("plyr","dplyr","data.table","foreach")
+package.check <- lapply(packages, FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+        install.packages(x, dependencies = TRUE)
+        library(x, character.only = TRUE)
+    }
+})
 
-require(plyr)
-require(dplyr)
-require(data.table)
-require(foreach)
+
 
 
 get.zscore <- function(m,a,n1,n2){ #n1 for IP, n2 for input
@@ -19,8 +26,6 @@ get.zscore <- function(m,a,n1,n2){ #n1 for IP, n2 for input
 options  <- commandArgs(trailingOnly = TRUE)
 exp.file <- options[1]
 exp.meta <- read.csv(file=exp.file,header=TRUE,stringsAsFactors=FALSE)
-
-
 
 
 
@@ -83,17 +88,9 @@ MA.list <- foreach(i = 1:nrow(exp.meta)) %do% {
 names(MA.list) <- as.character(exp.meta$exp.name) 
 
 
-bam.file.list   <- system('ls alignment|grep all.rmdup.bam',wait=TRUE,intern=TRUE)
-lib.read.length <- foreach(bam.file = bam.file.list,.combine='c') %do% {
-    cmd <- sprintf("samtools view alignment/%s|head -n 1|cut -f 10",bam.file)
-    seq <- system(cmd,wait=TRUE,intern=TRUE)
-    l   <- ifelse(identical(seq, character(0)),0,nchar(seq))
-    l
-    
-}
-names(lib.read.length) <- bam.file.list
+rs.file <- sprintf("RData/%s.RetroEnrich.results.RData",exp.file)
+save(file=rs.file,list=c('MA.list','lib.size','rt.read.count.matrix','exp.meta'))
 
 
-rs.file <- sprintf("RData/%s.chip.seq.results.RData",exp.file)
-save(file=rs.file,list=c('MA.list','lib.size','rt.read.count.matrix','exp.meta','lib.read.length'))
+
 
